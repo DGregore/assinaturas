@@ -1,0 +1,80 @@
+<!-- Formulário para Adicionar/Editar Usuário -->
+<div class="form-container">
+  <h2>{{ editingUser ? 'Editar Usuário' : 'Adicionar Novo Usuário' }}</h2>
+  <form (ngSubmit)="saveUser()" #userForm="ngForm">
+    <div class="form-group">
+      <label for="userName">Nome:</label>
+      <input type="text" id="userName" name="userName" [(ngModel)]="currentUser.name" required #name="ngModel">
+      <div *ngIf="name.invalid && (name.dirty || name.touched)" class="error-message">
+        Nome é obrigatório.
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="userEmail">Email:</label>
+      <input type="email" id="userEmail" name="userEmail" [(ngModel)]="currentUser.email" required email #email="ngModel">
+      <div *ngIf="email.invalid && (email.dirty || email.touched)" class="error-message">
+        <span *ngIf="email.errors?.['required']">Email é obrigatório.</span>
+        <span *ngIf="email.errors?.['email']">Formato de email inválido.</span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="userPassword">Senha:</label>
+      <input type="password" id="userPassword" name="userPassword" [(ngModel)]="currentUser.password" [required]="!editingUser" #password="ngModel">
+      <div *ngIf="password.invalid && (password.dirty || password.touched) && !editingUser" class="error-message">
+        Senha é obrigatória para novos usuários.
+      </div>
+      <small *ngIf="editingUser">Deixe em branco para manter a senha atual.</small>
+    </div>
+    <div class="form-group">
+      <label for="userRole">Função:</label>
+      <select id="userRole" name="userRole" [(ngModel)]="currentUser.role" required #role="ngModel">
+        <option *ngFor="let roleValue of userRoles" [value]="roleValue">{{ roleValue }}</option>
+      </select>
+      <div *ngIf="role.invalid && (role.dirty || role.touched)" class="error-message">
+        Função é obrigatória.
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="userSector">Setor:</label>
+      <select id="userSector" name="userSector" [(ngModel)]="currentUser.sectorId">
+        <option [ngValue]="undefined">Nenhum</option> <!-- Opção para nenhum setor -->
+        <option *ngFor="let sector of sectors" [value]="sector.id">{{ sector.name }}</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button type="submit" [disabled]="userForm.invalid">{{ editingUser ? 'Salvar Alterações' : 'Adicionar Usuário' }}</button>
+      <button type="button" (click)="cancelEdit()" *ngIf="editingUser">Cancelar Edição</button>
+    </div>
+  </form>
+</div>
+
+<!-- Lista de Usuários -->
+<div class="list-container">
+  <h2>Usuários Existentes</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nome</th>
+        <th>Email</th>
+        <th>Função</th>
+        <th>Setor</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let user of users">
+        <td>{{ user.id }}</td>
+        <td>{{ user.name }}</td>
+        <td>{{ user.email }}</td>
+        <td>{{ user.role }}</td>
+        <td>{{ user.sector ? user.sector.name : 'Nenhum' }}</td> <!-- Usar objeto sector diretamente -->
+        <td>
+          <button (click)="editUser(user)">Editar</button>
+          <button (click)="confirmDelete(user.id)">Excluir</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+

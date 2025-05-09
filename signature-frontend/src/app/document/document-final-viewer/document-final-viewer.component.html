@@ -1,0 +1,45 @@
+<div class="document-final-container">
+  <div class="document-header">
+    <h2 *ngIf="document">Documento Final: {{ document.originalFilename }}</h2>
+    <h2 *ngIf="!document">Documento Final</h2>
+    
+    <div class="document-actions">
+      <button mat-raised-button color="primary" [disabled]="!pdfSrc" (click)="downloadFinalDocument()">
+        <mat-icon>download</mat-icon> Baixar Documento Assinado
+      </button>
+      <button mat-raised-button color="accent" [disabled]="!documentHash" (click)="copyHashToClipboard()">
+        <mat-icon>content_copy</mat-icon> Copiar Hash
+      </button>
+      <button mat-raised-button routerLink="/documentos">
+        <mat-icon>arrow_back</mat-icon> Voltar
+      </button>
+    </div>
+  </div>
+
+  <div class="document-hash" *ngIf="documentHash">
+    <p><strong>Hash do documento:</strong> <span class="hash-value">{{ documentHash }}</span></p>
+    <p class="hash-info">Este hash garante a integridade do documento. Compartilhe-o com os destinatários para verificação.</p>
+  </div>
+
+  <div class="error-message" *ngIf="errorMessage">
+    <p>{{ errorMessage }}</p>
+  </div>
+
+  <div class="loading-container" *ngIf="isLoading">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Carregando documento final...</p>
+  </div>
+
+  <div class="pdf-container" *ngIf="pdfSrc && !isLoading">
+    <pdf-viewer
+      [src]="pdfSrc"
+      [render-text]="true"
+      [original-size]="false"
+      [show-all]="true"
+      [fit-to-page]="true"
+      [zoom]="1"
+      [zoom-scale]="'page-width'"
+      style="width: 100%; height: 600px;"
+    ></pdf-viewer>
+  </div>
+</div>

@@ -1,0 +1,84 @@
+.document-final-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.document-header {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.document-header h2 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.document-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.document-hash {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid #3f51b5;
+}
+
+.hash-value {
+  font-family: monospace;
+  background-color: #e0e0e0;
+  padding: 3px 6px;
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+.hash-info {
+  margin-top: 10px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid #c62828;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.loading-container p {
+  margin-top: 20px;
+  color: #666;
+}
+
+.pdf-container {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f5f5f5;
+}
+
+@media (max-width: 768px) {
+  .document-actions {
+    flex-direction: column;
+  }
+  
+  .document-actions button {
+    width: 100%;
+  }
+}

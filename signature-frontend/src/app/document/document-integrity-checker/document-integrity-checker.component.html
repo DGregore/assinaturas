@@ -1,0 +1,55 @@
+<div class="integrity-checker-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Verificação de Integridade de Documento</mat-card-title>
+      <mat-card-subtitle>
+        Verifique se um documento PDF não foi alterado após a assinatura
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="integrityForm" (ngSubmit)="verifyIntegrity()">
+        <div class="file-upload-container">
+          <button type="button" mat-raised-button color="primary" (click)="fileInput.click()">
+            <mat-icon>attach_file</mat-icon> Selecionar Documento PDF
+          </button>
+          <input #fileInput type="file" accept="application/pdf" (change)="onFileSelected($event)" style="display: none">
+          <span class="selected-file" *ngIf="selectedFileName">{{ selectedFileName }}</span>
+        </div>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Hash do Documento</mat-label>
+          <input matInput formControlName="hash" placeholder="Cole o hash do documento aqui">
+          <mat-hint>O hash é fornecido ao visualizar o documento final assinado</mat-hint>
+          <mat-error *ngIf="integrityForm.get('hash')?.hasError('required')">
+            O hash é obrigatório
+          </mat-error>
+        </mat-form-field>
+
+        <div class="form-actions">
+          <button type="submit" mat-raised-button color="primary" [disabled]="integrityForm.invalid || isLoading">
+            <mat-icon>verified</mat-icon> Verificar Integridade
+          </button>
+          <button type="button" mat-button (click)="clearForm()" [disabled]="isLoading">
+            <mat-icon>clear</mat-icon> Limpar
+          </button>
+        </div>
+      </form>
+
+      <div class="loading-container" *ngIf="isLoading">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Verificando integridade do documento...</p>
+      </div>
+
+      <div class="result-container" *ngIf="verificationResult">
+        <div class="result-card" [ngClass]="verificationResult.isValid ? 'valid-result' : 'invalid-result'">
+          <mat-icon>{{ verificationResult.isValid ? 'check_circle' : 'error' }}</mat-icon>
+          <div class="result-message">
+            <h3>{{ verificationResult.isValid ? 'Documento Íntegro' : 'Documento Alterado' }}</h3>
+            <p>{{ verificationResult.message }}</p>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

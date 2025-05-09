@@ -1,0 +1,287 @@
+diff --git a/src/document/document.entity.ts b/src/document/document.entity.ts
+index 2219a1e..a8b3c5e 100644
+--- a/src/document/document.entity.ts
++++ b/src/document/document.entity.ts
+@@ -42,6 +42,12 @@ export class Document {
+   @Column()
+   size: number; // File size in bytes
+ 
++  @Column({ nullable: true })
++  hashOriginal: string; // SHA-256 hash of the original document
++
++  @Column({ nullable: true })
++  hashSigned: string; // SHA-256 hash of the signed document
++
+   @Column({
+     type: 'enum',
+     enum: DocumentStatus,
+diff --git a/src/integrity/integrity.service.ts b/src/integrity/integrity.service.ts
+new file mode 100644
+index 0000000..c9c9c9c
+--- /dev/null
++++ b/src/integrity/integrity.service.ts
+@@ -0,0 +1,87 @@
++import { Injectable, Logger, NotFoundException } from '@nestjs/common';
++import { InjectRepository } from '@nestjs/typeorm';
++import { Repository } from 'typeorm';
++import { Document } from '../document/document.entity';
++import { MinioService } from '../document/minio.service';
++import * as crypto from 'crypto';
++import { Readable } from 'stream';
++
++@Injectable()
++export class IntegrityService {
++  private readonly logger = new Logger(IntegrityService.name);
++
++  constructor(
++    @InjectRepository(Document)
++    private documentRepository: Repository<Document>,
++    private minioService: MinioService,
++  ) {}
++
++  /**
++   * Gera um hash SHA-256 a partir de um buffer
++   * @param buffer Buffer do arquivo
++   * @returns Hash SHA-256 em formato hexadecimal
++   */
++  generateHash(buffer: Buffer): string {
++    return crypto.createHash('sha256').update(buffer).digest('hex');
++  }
++
++  /**
++   * Gera e armazena o hash do documento original
++   * @param document Documento
++   * @param buffer Buffer do arquivo
++   * @returns Documento atualizado com o hash
++   */
++  async storeOriginalHash(document: Document, buffer: Buffer): Promise<Document> {
++    this.logger.log(`Generating hash for original document ID: ${document.id}`);
++    const hash = this.generateHash(buffer);
++    document.hashOriginal = hash;
++    return this.documentRepository.save(document);
++  }
++
++  /**
++   * Gera e armazena o hash do documento assinado
++   * @param documentId ID do documento
++   * @param buffer Buffer do documento assinado
++   * @returns Documento atualizado com o hash
++   */
++  async storeSignedHash(documentId: number, buffer: Buffer): Promise<Document> {
++    this.logger.log(`Generating hash for signed document ID: ${documentId}`);
++    const document = await this.documentRepository.findOne({ where: { id: documentId } });
++    
++    if (!document) {
++      throw new NotFoundException(`Documento com ID ${documentId} não encontrado.`);
++    }
++    
++    const hash = this.generateHash(buffer);
++    document.hashSigned = hash;
++    return this.documentRepository.save(document);
++  }
++
++  /**
++   * Verifica a integridade do documento comparando o hash armazenado com o hash calculado
++   * @param documentId ID do documento
++   * @param isSigned Indica se deve verificar o documento assinado ou original
++   * @returns Objeto com resultado da verificação e hashes
++   */
++  async verifyIntegrity(documentId: number, isSigned: boolean = false): Promise<{ isValid: boolean, storedHash: string, calculatedHash: string }> {
++    this.logger.log(`Verifying integrity for document ID: ${documentId}, isSigned: ${isSigned}`);
++    const document = await this.documentRepository.findOne({ where: { id: documentId } });
++    
++    if (!document) {
++      throw new NotFoundException(`Documento com ID ${documentId} não encontrado.`);
++    }
++
++    const storagePath = document.storagePath;
++    const storedHash = isSigned ? document.hashSigned : document.hashOriginal;
++    
++    if (!storedHash) {
++      throw new NotFoundException(`Hash ${isSigned ? 'assinado' : 'original'} não encontrado para o documento ID: ${documentId}`);
++    }
++
++    const stream = await this.minioService.downloadFile(storagePath);
++    const buffer = await this.streamToBuffer(stream);
++    const calculatedHash = this.generateHash(buffer);
++    
++    return { isValid: calculatedHash === storedHash, storedHash, calculatedHash };
++  }
++
++  /**
++   * Converte um stream para buffer
++   * @param stream Stream de dados
++   * @returns Buffer
++   */
++  private async streamToBuffer(stream: Readable): Promise<Buffer> {
++    return new Promise<Buffer>((resolve, reject) => {
++      const chunks: Buffer[] = [];
++      stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
++      stream.on('error', (err) => reject(err));
++      stream.on('end', () => resolve(Buffer.concat(chunks)));
++    });
++  }
++}
+diff --git a/src/document/document.module.ts b/src/document/document.module.ts
+index 1287a1e..a8b3c5e 100644
+--- a/src/document/document.module.ts
++++ b/src/document/document.module.ts
+@@ -7,6 +7,7 @@ import { DocumentSignatory } from './document-signatory.entity';
+ import { User } from '../user/user.entity';
+ import { MinioService } from './minio.service';
+ import { NotificationModule } from '../notification/notification.module';
++import { IntegrityService } from '../integrity/integrity.service';
+ import { AuditLogModule } from '../audit-log/audit-log.module';
+ 
+ @Module({
+@@ -17,7 +18,7 @@ import { AuditLogModule } from '../audit-log/audit-log.module';
+     forwardRef(() => NotificationModule), // Use forwardRef to handle circular dependency
+     forwardRef(() => AuditLogModule), // Use forwardRef to handle circular dependency
+   ],
+-  providers: [DocumentService, MinioService],
++  providers: [DocumentService, MinioService, IntegrityService],
+   controllers: [DocumentController],
+   exports: [DocumentService, MinioService], // Export services for use in other modules
+ })
+diff --git a/src/document/document.service.ts b/src/document/document.service.ts
+index 20366a1..a8b3c5e 100644
+--- a/src/document/document.service.ts
++++ b/src/document/document.service.ts
+@@ -10,6 +10,7 @@ import { UploadDocumentDto } from './dto/create-document.dto';
+ import { UpdateDocumentDto } from './dto/update-document.dto';
+ import { NotificationService } from '../notification/notification.service';
+ import { AuditLogService } from '../audit-log/audit-log.service'; // Import AuditLogService
++import { IntegrityService } from '../integrity/integrity.service'; // Import IntegrityService
+ import { v4 as uuidv4 } from 'uuid';
+ import { Readable } from 'stream';
+ 
+@@ -29,6 +30,8 @@ export class DocumentService {
+     private notificationService: NotificationService,
+     @Inject(forwardRef(() => AuditLogService)) // Inject AuditLogService
+     private auditLogService: AuditLogService,
++    @Inject(forwardRef(() => IntegrityService)) // Inject IntegrityService
++    private integrityService: IntegrityService,
+   ) {}
+ 
+   // --- Create Document --- //
+@@ -58,6 +61,10 @@ export class DocumentService {
+       });
+ 
+       savedDocument = await this.documentRepository.save(document);
++      
++      // Gerar e armazenar hash do documento original
++      savedDocument = await this.integrityService.storeOriginalHash(savedDocument, file.buffer);
++      
+       this.logger.log(`Document metadata saved with ID: ${savedDocument.id}`);
+ 
+       // Log audit trail (Task 1.11)
+@@ -97,6 +104,7 @@ export class DocumentService {
+       // Attempt cleanup only if MinIO upload succeeded but DB save failed
+       if (savedDocument === null && storagePath) { // Check if storagePath is defined
+           try {
++              // Se falhar, remover o arquivo do MinIO
+               await this.minioService.deleteFile(storagePath);
+               this.logger.log(`Cleaned up MinIO file due to error: ${storagePath}`);
+           } catch (cleanupError) {
+@@ -106,6 +114,19 @@ export class DocumentService {
+       throw new InternalServerErrorException(`Falha ao criar documento: ${error.message}`);
+     }
+   }
++  
++  // --- Método para gerar documento final com assinaturas --- //
++  // Este método deve ser chamado quando todas as assinaturas forem concluídas
++  async generateFinalDocument(documentId: number, finalDocumentBuffer: Buffer): Promise<Document> {
++    this.logger.log(`Generating final document with signatures for document ID: ${documentId}`);
++    
++    // Gerar e armazenar hash do documento final assinado
++    const document = await this.integrityService.storeSignedHash(documentId, finalDocumentBuffer);
++    
++    // Log audit trail
++    await this.auditLogService.logAction(document.owner.id, 'GENERATE_FINAL_DOCUMENT', 'Document', document.id);
++    return document;
++  }
+ 
+   // --- Find Documents --- //
+   async findAll(options?: FindManyOptions<Document>): Promise<Document[]> {
+diff --git a/src/document/document.controller.ts b/src/document/document.controller.ts
+index 5289a1e..a8b3c5e 100644
+--- a/src/document/document.controller.ts
++++ b/src/document/document.controller.ts
+@@ -20,6 +20,7 @@ import {
+   // MaxFileSizeValidator, // Optional: Add back if needed
+ } from '@nestjs/common';
+ import { FileInterceptor } from '@nestjs/platform-express';
++import { IntegrityService } from '../integrity/integrity.service';
+ import { DocumentService } from './document.service';
+ import { Document } from './document.entity';
+ import { UploadDocumentDto } from './dto/create-document.dto';
+@@ -35,7 +36,10 @@ import { Express, Response } from 'express'; // Import Express and Response
+ export class DocumentController {
+   private readonly logger = new Logger(DocumentController.name);
+ 
+-  constructor(private documentService: DocumentService) {}
++  constructor(
++    private documentService: DocumentService,
++    private integrityService: IntegrityService,
++  ) {}
+ 
+   // --- Upload Document --- //
+   @Post()
+@@ -123,4 +127,32 @@ export class DocumentController {
+     this.logger.log(`User ID ${userId} (Role: ${userRole}) deleting document ID: ${id}`);
+     return this.documentService.delete(id, userId, userRole);
+   }
++  
++  // --- Verificar Integridade do Documento --- //
++  @Get(':id/integrity')
++  async checkIntegrity(
++    @Param('id', ParseIntPipe) id: number,
++    @Request() req: any,
++  ): Promise<{ isValid: boolean, originalHash: string, signedHash: string }> {
++    const userId = req.user.userId;
++    const userRole = req.user.role;
++    this.logger.log(`User ID ${userId} (Role: ${userRole}) checking integrity for document ID: ${id}`);
++    
++    const document = await this.documentService.findOne(id, userId, userRole);
++    return {
++      isValid: document.hashOriginal !== null,
++      originalHash: document.hashOriginal,
++      signedHash: document.hashSigned,
++    };
++  }
++  
++  // --- Verificar Integridade do Documento (recalculando o hash) --- //
++  @Post(':id/integrity/verify')
++  async verifyIntegrity(
++    @Param('id', ParseIntPipe) id: number,
++    @Request() req: any,
++  ): Promise<{ isValid: boolean, storedHash: string, calculatedHash: string }> {
++    const userId = req.user.userId;
++    return this.integrityService.verifyIntegrity(id, false); // Verificar documento original
++  }
+ }
+diff --git a/src/migrations/1683456789000-IntegrityHashColumns.ts b/src/migrations/1683456789000-IntegrityHashColumns.ts
+new file mode 100644
+index 0000000..c9c9c9c
+--- /dev/null
++++ b/src/migrations/1683456789000-IntegrityHashColumns.ts
+@@ -0,0 +1,18 @@
++import { MigrationInterface, QueryRunner } from 'typeorm';
++
++export class IntegrityHashColumns1683456789000 implements MigrationInterface {
++  public async up(queryRunner: QueryRunner): Promise<void> {
++    await queryRunner.query(`
++      ALTER TABLE documents 
++      ADD COLUMN IF NOT EXISTS "hashOriginal" VARCHAR,
++      ADD COLUMN IF NOT EXISTS "hashSigned" VARCHAR
++    `);
++  }
++
++  public async down(queryRunner: QueryRunner): Promise<void> {
++    await queryRunner.query(`
++      ALTER TABLE documents 
++      DROP COLUMN IF EXISTS "hashOriginal",
++      DROP COLUMN IF EXISTS "hashSigned"
++    `);
++  }
++}
