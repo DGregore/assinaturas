@@ -174,6 +174,7 @@ export class DocumentUploadComponent implements OnInit {
           console.error('Upload error:', error);
         }
       });
+      
     } catch (error: any) {
       this.isLoading = false;
       this.errorMessage = `Erro ao preparar documento: ${error.message}`;

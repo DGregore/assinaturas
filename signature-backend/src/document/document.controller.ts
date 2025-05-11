@@ -41,27 +41,26 @@ export class DocumentController {
   constructor(private documentService: DocumentService) {}
 
   // --- Upload Document --- //
-  @Post('upload')
+    @Post('upload')
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor('file')) // 'file' is the field name in the form-data
-  // @Roles(UserRole.ADMIN, UserRole.USER) // Example: Allow specific roles
+  @UseInterceptors(FileInterceptor('file'))
   async uploadDocument(
-    @Body() uploadDto: UploadDocumentDto, // Receive DTO from body
+    @Body() body: any,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [
-          // new MaxFileSizeValidator({ maxSize: 10000000 }), // Example: 10MB limit
-          new FileTypeValidator({ fileType: 'application/pdf' }),
-        ],
+        validators: [new FileTypeValidator({ fileType: 'application/pdf' })],
       }),
     )
     file: Express.Multer.File,
-    @Request() req: any, // Get user from request (added by JwtAuthGuard)
+    @Request() req: any,
   ): Promise<Document> {
-    const userId = req.user.userId; // Extract user ID from JWT payload
-    this.logger.log(`User ID ${userId} uploading document: ${file.originalname}`);
-    // The DTO now includes signatories, title, description
-    return this.documentService.create(uploadDto, file, userId);
+    const uploadDto: UploadDocumentDto = {
+      title: body.title,
+      description: body.description,
+      signatories: JSON.parse(body.signatories),
+    };
+
+    return this.documentService.create(uploadDto, file, req.user.userId);
   }
   @Post('validate')
   @UseInterceptors(FileInterceptor('file'))

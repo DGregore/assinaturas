@@ -1,14 +1,13 @@
 import { StreamableFile } from '@nestjs/common';
 import { DocumentService } from './document.service';
 import { Document } from './document.entity';
-import { UploadDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { Response } from 'express';
 export declare class DocumentController {
     private documentService;
     private readonly logger;
     constructor(documentService: DocumentService);
-    uploadDocument(uploadDto: UploadDocumentDto, file: Express.Multer.File, req: any): Promise<Document>;
+    uploadDocument(body: any, file: Express.Multer.File, req: any): Promise<Document>;
     validateDocument(file: Express.Multer.File): Promise<{
         isValid: boolean;
     }>;

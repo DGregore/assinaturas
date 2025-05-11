@@ -32,20 +32,6 @@ class CreateDocumentDto {
 }
 exports.CreateDocumentDto = CreateDocumentDto;
 __decorate([
-    (0, class_validator_1.IsArray)(),
-    (0, class_validator_1.ValidateNested)({ each: true }),
-    (0, class_transformer_1.Type)(() => CreateSignatoryDto),
-    (0, class_transformer_1.Transform)(({ value }) => {
-        if (typeof value === 'string') {
-            try {
-                return JSON.parse(value);
-            }
-            catch (e) {
-                throw new Error('signatories deve ser um array válido');
-            }
-        }
-        return value;
-    }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)

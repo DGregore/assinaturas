@@ -17,7 +17,6 @@ exports.DocumentController = void 0;
 const common_1 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
 const document_service_1 = require("./document.service");
-const create_document_dto_1 = require("./dto/create-document.dto");
 const update_document_dto_1 = require("./dto/update-document.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 let DocumentController = DocumentController_1 = class DocumentController {
@@ -26,10 +25,13 @@ let DocumentController = DocumentController_1 = class DocumentController {
     constructor(documentService) {
         this.documentService = documentService;
     }
-    async uploadDocument(uploadDto, file, req) {
-        const userId = req.user.userId;
-        this.logger.log(`User ID ${userId} uploading document: ${file.originalname}`);
-        return this.documentService.create(uploadDto, file, userId);
+    async uploadDocument(body, file, req) {
+        const uploadDto = {
+            title: body.title,
+            description: body.description,
+            signatories: JSON.parse(body.signatories),
+        };
+        return this.documentService.create(uploadDto, file, req.user.userId);
     }
     async validateDocument(file) {
         if (!file) {
@@ -79,13 +81,11 @@ __decorate([
     (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('file')),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.UploadedFile)(new common_1.ParseFilePipe({
-        validators: [
-            new common_1.FileTypeValidator({ fileType: 'application/pdf' }),
-        ],
+        validators: [new common_1.FileTypeValidator({ fileType: 'application/pdf' })],
     }))),
     __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_document_dto_1.UploadDocumentDto, Object, Object]),
+    __metadata("design:paramtypes", [Object, Object, Object]),
     __metadata("design:returntype", Promise)
 ], DocumentController.prototype, "uploadDocument", null);
 __decorate([
