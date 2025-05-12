@@ -18,6 +18,7 @@ import { inject } from '@angular/core';
 import { AuthService } from './services/auth.service';
 import { Router } from '@angular/router';
 import { map, take } from 'rxjs';
+import { DocumentViewerComponent } from './document/document-viewer/document-viewer.component';
 
 const authGuard = () => {
   const authService = inject(AuthService);
@@ -72,6 +73,7 @@ export const routes: Routes = [
       { path: 'documento/:id/final', component: DocumentFinalViewerComponent },
       { path: 'verificar-integridade', component: DocumentIntegrityCheckerComponent },
       { path: 'settings', component: SettingsComponent },
+      { path: 'document/view/:id', component: DocumentViewerComponent },
       // Admin routes (nested under layout, protected by AuthGuard and AdminGuard)
       {
         path: 'admin',

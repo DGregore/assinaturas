@@ -5,6 +5,10 @@ export type PageViewportParameters = {
      */
     viewBox: Array<number>;
     /**
+     * - The size of units.
+     */
+    userUnit: number;
+    /**
      * - The scale of the viewport.
      */
     scale: number;
@@ -93,6 +97,7 @@ export function noContextMenu(e: any): void;
  * Scale factors for the canvas, necessary with HiDPI displays.
  */
 export class OutputScale {
+    static get pixelRatio(): number;
     /**
      * @type {number} Horizontal scale.
      */
@@ -105,12 +110,22 @@ export class OutputScale {
      * @type {boolean} Returns `true` when scaling is required, `false` otherwise.
      */
     get scaled(): boolean;
+    /**
+     * @type {boolean} Returns `true` when scaling is symmetric,
+     *   `false` otherwise.
+     */
     get symmetric(): boolean;
+    /**
+     * @returns {boolean} Returns `true` if scaling was limited,
+     *   `false` otherwise.
+     */
+    limitCanvas(width: any, height: any, maxPixels: any, maxDim: any): boolean;
 }
 /**
  * @typedef {Object} PageViewportParameters
  * @property {Array<number>} viewBox - The xMin, yMin, xMax and
  *   yMax coordinates.
+ * @property {number} userUnit - The size of units.
  * @property {number} scale - The scale of the viewport.
  * @property {number} rotation - The rotation, in degrees, of the viewport.
  * @property {number} [offsetX] - The horizontal, i.e. x-axis, offset. The
@@ -140,8 +155,9 @@ export class PageViewport {
     /**
      * @param {PageViewportParameters}
      */
-    constructor({ viewBox, scale, rotation, offsetX, offsetY, dontFlip, }: PageViewportParameters);
+    constructor({ viewBox, userUnit, scale, rotation, offsetX, offsetY, dontFlip, }: PageViewportParameters);
     viewBox: number[];
+    userUnit: number;
     scale: number;
     rotation: number;
     offsetX: number;
@@ -159,7 +175,7 @@ export class PageViewport {
      * @param {PageViewportCloneParameters} [params]
      * @returns {PageViewport} Cloned viewport.
      */
-    clone({ scale, rotation, offsetX, offsetY, dontFlip, }?: PageViewportCloneParameters | undefined): PageViewport;
+    clone({ scale, rotation, offsetX, offsetY, dontFlip, }?: PageViewportCloneParameters): PageViewport;
     /**
      * Converts PDF point to the viewport coordinates. For examples, useful for
      * converting PDF location into canvas pixel coordinates.
@@ -235,5 +251,7 @@ export class StatTimer {
     timeEnd(name: any): void;
     toString(): string;
 }
+export function stopEvent(e: any): void;
+export const SupportedImageMimeTypes: string[];
 export const SVG_NS: "http://www.w3.org/2000/svg";
 export {};

@@ -16,7 +16,8 @@ export interface DocumentSignatory {
 export interface Document {
   id: number;
   originalFilename: string; // Nome original do arquivo PDF
-  storageFilename: string; // Nome do arquivo no MinIO (geralmente UUID)
+  //storageFilename: string; // Nome do arquivo no MinIO (geralmente UUID)
+  storagePath: string;
   status: 'DRAFT' | 'SIGNING' | 'COMPLETED' | 'REJECTED' | 'CANCELLED'; // Status geral do documento
   ownerId: number; // ID do usuário que fez o upload
   createdAt: Date;

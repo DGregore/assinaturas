@@ -125,6 +125,10 @@ export class DocumentService {
     );
   }
 
+  applySignature(documentId: string, signatureData: any, finalPosition: { x: any; y: any; width: number; height: number; page: number; }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/documents/${documentId}/signature`, signatureData);
+  }
+
   /**
    * Retrieves audit logs for a specific entity.
    * @param entityType The type of the entity (e.g., 'Document').

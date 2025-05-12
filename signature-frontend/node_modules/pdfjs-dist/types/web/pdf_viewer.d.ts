@@ -91,6 +91,20 @@ export type PDFViewerOptions = {
      */
     maxCanvasPixels?: number | undefined;
     /**
+     * - The maximum supported canvas dimension,
+     * in either width or height. Use `-1` for no limit.
+     * The default value is 32767.
+     */
+    maxCanvasDim?: number | undefined;
+    /**
+     * - When enabled, if the rendered
+     * pages would need a canvas that is larger than `maxCanvasPixels` or
+     * `maxCanvasDim`, it will draw a second canvas on top of the CSS-zoomed one,
+     * that only renders the part of the page that is close to the viewport.
+     * The default value is `true`.
+     */
+    enableDetailCanvas?: boolean | undefined;
+    /**
      * - Localization service.
      */
     l10n?: import("./interfaces").IL10n | undefined;
@@ -110,6 +124,16 @@ export type PDFViewerOptions = {
      * rendering. The default value is `false`.
      */
     enableHWA?: boolean | undefined;
+    /**
+     * - Enable zooming on pinch gesture.
+     * The default value is `true`.
+     */
+    supportsPinchToZoom?: boolean | undefined;
+    /**
+     * - Enable creation of hyperlinks from
+     * text that look like URLs. The default value is `true`.
+     */
+    enableAutoLinking?: boolean | undefined;
 };
 export namespace PagesCountLimit {
     let FORCE_SCROLL_MODE_PAGE: number;
@@ -151,6 +175,14 @@ export namespace PagesCountLimit {
  * @property {number} [maxCanvasPixels] - The maximum supported canvas size in
  *   total pixels, i.e. width * height. Use `-1` for no limit, or `0` for
  *   CSS-only zooming. The default value is 4096 * 8192 (32 mega-pixels).
+ * @property {number} [maxCanvasDim] - The maximum supported canvas dimension,
+ *   in either width or height. Use `-1` for no limit.
+ *   The default value is 32767.
+ * @property {boolean} [enableDetailCanvas] - When enabled, if the rendered
+ *   pages would need a canvas that is larger than `maxCanvasPixels` or
+ *   `maxCanvasDim`, it will draw a second canvas on top of the CSS-zoomed one,
+ *   that only renders the part of the page that is close to the viewport.
+ *   The default value is `true`.
  * @property {IL10n} [l10n] - Localization service.
  * @property {boolean} [enablePermissions] - Enables PDF document permissions,
  *   when they exist. The default value is `false`.
@@ -159,6 +191,10 @@ export namespace PagesCountLimit {
  *   mode.
  * @property {boolean} [enableHWA] - Enables hardware acceleration for
  *   rendering. The default value is `false`.
+ * @property {boolean} [supportsPinchToZoom] - Enable zooming on pinch gesture.
+ *   The default value is `true`.
+ * @property {boolean} [enableAutoLinking] - Enable creation of hyperlinks from
+ *   text that look like URLs. The default value is `true`.
  */
 export class PDFPageViewBuffer {
     constructor(size: any);
@@ -194,6 +230,8 @@ export class PDFViewer {
     enablePrintAutoRotate: boolean;
     removePageBorders: boolean | undefined;
     maxCanvasPixels: number | undefined;
+    maxCanvasDim: number | undefined;
+    enableDetailCanvas: boolean;
     l10n: import("./interfaces").IL10n | GenericL10n | undefined;
     pageColors: Object | null;
     defaultRenderingQueue: boolean;
@@ -375,11 +413,11 @@ export class PDFViewer {
      * @param {Promise<OptionalContentConfig>} promise - A promise that is
      *   resolved with an {@link OptionalContentConfig} instance.
      */
-    set optionalContentConfigPromise(promise: Promise<import("../src/display/optional_content_config").OptionalContentConfig>);
+    set optionalContentConfigPromise(promise: Promise<OptionalContentConfig>);
     /**
      * @type {Promise<OptionalContentConfig | null>}
      */
-    get optionalContentConfigPromise(): Promise<import("../src/display/optional_content_config").OptionalContentConfig | null>;
+    get optionalContentConfigPromise(): Promise<OptionalContentConfig | null>;
     /**
      * @param {number} mode - The direction in which the document pages should be
      *   laid out within the scrolling container.
@@ -437,7 +475,7 @@ export class PDFViewer {
          *  transformation origin.
          */
         origin?: any[] | undefined;
-    } | undefined): void;
+    }): void;
     /**
      * Increase the current zoom level one, or more, times.
      * @param {ChangeScaleOptions} [options]
@@ -451,7 +489,7 @@ export class PDFViewer {
          *  transformation origin.
          */
         origin?: any[] | undefined;
-    } | undefined): void;
+    }): void;
     /**
      * Decrease the current zoom level one, or more, times.
      * @param {ChangeScaleOptions} [options]
@@ -465,7 +503,7 @@ export class PDFViewer {
          *  transformation origin.
          */
         origin?: any[] | undefined;
-    } | undefined): void;
+    }): void;
     get containerTopLeft(): number[];
     /**
      * @typedef {Object} AnnotationEditorModeOptions

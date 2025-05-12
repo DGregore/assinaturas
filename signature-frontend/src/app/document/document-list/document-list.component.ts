@@ -97,7 +97,8 @@ export class DocumentListComponent implements OnInit, OnDestroy {
   }
 
   viewDocument(id: number): void {
-    this.router.navigate(['/documents', id, 'view']);
+   // this.router.navigate(['/documents', id, 'view']);
+   this.router.navigate(['/document/view', id]);
   }
 
   downloadDocument(id: number, filename: string): void {

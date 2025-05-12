@@ -31,24 +31,24 @@ export type TextLayerUpdateParameters = {
     onBefore?: Function | undefined;
 };
 export class TextLayer {
-    static "__#47@#ascentCache": Map<any, any>;
-    static "__#47@#canvasContexts": Map<any, any>;
-    static "__#47@#canvasCtxFonts": WeakMap<object, any>;
-    static "__#47@#minFontSize": null;
-    static "__#47@#pendingTextLayers": Set<any>;
+    static "__#54@#ascentCache": Map<any, any>;
+    static "__#54@#canvasContexts": Map<any, any>;
+    static "__#54@#canvasCtxFonts": WeakMap<object, any>;
+    static "__#54@#minFontSize": null;
+    static "__#54@#pendingTextLayers": Set<any>;
     static get fontFamilyMap(): any;
     /**
      * Clean-up global textLayer data.
      * @returns {undefined}
      */
     static cleanup(): undefined;
-    static "__#47@#getCtx"(lang?: null): any;
-    static "__#47@#ensureCtxFont"(ctx: any, size: any, family: any): void;
+    static "__#54@#getCtx"(lang?: null): any;
+    static "__#54@#ensureCtxFont"(ctx: any, size: any, family: any): void;
     /**
      * Compute the minimum font size enforced by the browser.
      */
-    static "__#47@#ensureMinFontSizeComputed"(): void;
-    static "__#47@#getAscent"(fontFamily: any, lang: any): any;
+    static "__#54@#ensureMinFontSizeComputed"(): void;
+    static "__#54@#getAscent"(fontFamily: any, style: any, lang: any): any;
     /**
      * @param {TextLayerParameters} options
      */
@@ -74,12 +74,12 @@ export class TextLayer {
      *   of the textContent input.
      *   This is output and will initially be set to an empty array.
      */
-    get textDivs(): HTMLElement[];
+    get textDivs(): Array<HTMLElement>;
     /**
      * @type {Array<string>} Strings that correspond to the `str` property of
      *   the text items of the textContent input.
      *   This is output and will initially be set to an empty array
      */
-    get textContentItemsStr(): string[];
+    get textContentItemsStr(): Array<string>;
     #private;
 }

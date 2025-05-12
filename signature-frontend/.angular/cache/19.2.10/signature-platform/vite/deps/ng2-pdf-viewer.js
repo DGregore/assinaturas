@@ -42,7 +42,7 @@ import {
   __superGet
 } from "./chunk-ONSPR7LY.js";
 
-// node_modules/pdfjs-dist/build/pdf.mjs
+// node_modules/ng2-pdf-viewer/node_modules/pdfjs-dist/build/pdf.mjs
 var pdf_exports = {};
 __export(pdf_exports, {
   AbortException: () => __webpack_exports__AbortException,
@@ -20359,7 +20359,7 @@ var __webpack_exports__setLayerDimensions = __webpack_exports__.setLayerDimensio
 var __webpack_exports__shadow = __webpack_exports__.shadow;
 var __webpack_exports__version = __webpack_exports__.version;
 
-// node_modules/pdfjs-dist/web/pdf_viewer.mjs
+// node_modules/ng2-pdf-viewer/node_modules/pdfjs-dist/web/pdf_viewer.mjs
 var pdf_viewer_exports = {};
 __export(pdf_viewer_exports, {
   AnnotationLayerBuilder: () => __webpack_exports__AnnotationLayerBuilder,

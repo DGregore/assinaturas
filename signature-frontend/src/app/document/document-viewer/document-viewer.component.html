@@ -1,96 +1,149 @@
-<div class="viewer-container">
-  <div *ngIf="isLoading" class="loading-indicator">
-    Carregando documento...
-    <mat-spinner diameter="40"></mat-spinner>
-  </div>
 
-  <div *ngIf="errorMessage" class="error-message">
-    {{ errorMessage }}
-  </div>
-
-  <div *ngIf="!isLoading && document" class="document-content">
-    <h2>{{ document.title || document.originalFilename }}</h2>
-    <p *ngIf="document.description">{{ document.description }}</p>
-
-    <div class="viewer-actions top-actions">
-      <button (click)="downloadCurrentDocument()" [disabled]="!pdfSrc">Baixar PDF</button>
-      <button *ngIf="document.status === 'COMPLETED'" [routerLink]="['/documento', document.id, 'final']">Ver Documento Final</button>
-      <!-- Add other actions like cancel flow if applicable -->
+<div class="document-viewer-container">
+  <!-- Barra de ferramentas superior -->
+  <div class="toolbar">
+    <div class="navigation-controls">
+      <button (click)="prevPage()" [disabled]="currentPage === 1">
+        <i class="fas fa-chevron-left"></i> Anterior
+      </button>
+      <span class="page-info">Página {{ currentPage }} de {{ totalPages }}</span>
+      <button (click)="nextPage()" [disabled]="currentPage === totalPages">
+        Próxima <i class="fas fa-chevron-right"></i>
+      </button>
     </div>
-
-    <div class="pdf-viewer-area">
-      <pdf-viewer
-        #pdfViewerComponent <!-- Add template reference variable -->
-        [src]="pdfSrc"
-        [render-text]="true"
-        [original-size]="false"
-        style="display: block; width: 100%; height: 600px; border: 1px solid #ccc; cursor: crosshair;" <!-- Add cursor -->
-        (error)="errorMessage = \'Erro ao carregar o PDF.\'"
-        (page-rendered)="onPageRendered($event)"
-      ></pdf-viewer>
-      <!-- Placeholder for signature position marker -->
-      <div *ngIf="signaturePosition" class="signature-marker" [style.left.px]="signaturePosition.x" [style.top.px]="signaturePosition.y">X</div>
+    
+    <div class="zoom-controls">
+      <button (click)="zoomOut()">
+        <i class="fas fa-search-minus"></i>
+      </button>
+      <span>{{ scale * 100 }}%</span>
+      <button (click)="zoomIn()">
+        <i class="fas fa-search-plus"></i>
+      </button>
     </div>
-
-    <!-- Signature Pad Section -->
-    <div *ngIf="isUserNextSignatory && !documentSignedOrRejected()" class="signature-pad-section">
-      <h3>Sua Assinatura</h3>
-      <p>Clique no PDF acima para definir a posição da assinatura (página {{ signaturePosition?.page || \'N/A\' }}).</p>
+  </div>
+  
+  <div class="content-container">
+    <!-- Visualizador de PDF -->
+    <div class="pdf-container">
+      <div class="pdf-wrapper" [class.loading]="isLoading">
+        <canvas #pdfCanvas class="pdf-canvas"></canvas>
+        <canvas id="pdfOverlayCanvas" class="pdf-overlay-canvas"></canvas>
+        
+        <div *ngIf="isLoading" class="loading-overlay">
+          <div class="spinner"></div>
+          <span>Carregando documento...</span>
+        </div>
+      </div>
+      
+      <div class="signature-instructions" *ngIf="signatureImage">
+        <p>Clique no documento para posicionar a assinatura ou arraste para ajustar a posição.</p>
+        <button class="apply-button" (click)="applySignature()">
+          <i class="fas fa-check"></i> Aplicar Assinatura
+        </button>
+      </div>
+    </div>
+    
+    <!-- Painel de assinatura -->
+    <div class="signature-panel">
+      <h3>Assinatura Digital</h3>
+      
+      <!-- Área de desenho da assinatura -->
       <div class="signature-pad-container">
-        <canvas #signatureCanvas width="400" height="200" style="border: 1px solid #ccc;"></canvas>
+        <canvas #signatureCanvas class="signature-pad"></canvas>
+        <div class="signature-controls">
+          <button class="clear-button" (click)="clearSignature()">
+            <i class="fas fa-eraser"></i> Limpar
+          </button>
+          <button class="preview-button" (click)="previewSignature()">
+            <i class="fas fa-eye"></i> Pré-visualizar
+          </button>
+        </div>
       </div>
-      <div class="signature-pad-actions">
-        <button (click)="clearSignature()">Limpar</button>
-        <button (click)="applySignature()" [disabled]="isLoading || !signaturePosition">Aplicar Assinatura</button>
+      
+      <!-- Configurações da assinatura -->
+      <div class="signature-settings">
+        <h4>Personalização</h4>
+        
+        <div class="setting-group">
+          <label for="signatureColor">Cor:</label>
+          <input 
+            type="color" 
+            id="signatureColor" 
+            [(ngModel)]="signatureColor" 
+            (change)="updateBrushSettings()"
+          >
+        </div>
+        
+        <div class="setting-group">
+          <label for="signatureThickness">Espessura:</label>
+          <input 
+            type="range" 
+            id="signatureThickness" 
+            min="1" 
+            max="10" 
+            [(ngModel)]="signatureThickness" 
+            (change)="updateBrushSettings()"
+          >
+          <span>{{ signatureThickness }}px</span>
+        </div>
+        
+        <div class="setting-group">
+          <label for="signatureStyle">Estilo:</label>
+          <select 
+            id="signatureStyle" 
+            [(ngModel)]="signatureStyle" 
+            (change)="updateBrushSettings()"
+          >
+            <option value="solid">Contínuo</option>
+            <option value="dashed">Tracejado</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Templates de assinatura -->
+      <div class="signature-templates">
+        <h4>Templates de Assinatura</h4>
+        
+        <!-- Lista de templates salvos -->
+        <div class="templates-list" *ngIf="signatureTemplates.length > 0">
+          <div 
+            *ngFor="let template of signatureTemplates" 
+            class="template-item"
+            (click)="loadSignatureTemplate(template)"
+          >
+            <div class="template-preview">
+              <img [src]="template.imageData" alt="Template de assinatura">
+            </div>
+            <div class="template-info">
+              <span class="template-name">{{ template.name }}</span>
+              <span class="template-date">{{ template.createdAt | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <button 
+              class="delete-template" 
+              (click)="deleteSignatureTemplate(template); $event.stopPropagation()"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="no-templates" *ngIf="signatureTemplates.length === 0">
+          <p>Nenhum template salvo.</p>
+        </div>
+        
+        <!-- Salvar novo template -->
+        <div class="save-template">
+          <input 
+            type="text" 
+            placeholder="Nome do template" 
+            [(ngModel)]="newTemplateName"
+          >
+          <button (click)="saveSignatureAsTemplate()">
+            <i class="fas fa-save"></i> Salvar
+          </button>
+        </div>
       </div>
     </div>
-
-    <!-- Signature Flow Display -->
-    <div class="signature-flow">
-      <h3>Fluxo de Assinatura</h3>
-      <div *ngIf="!document.signatories || document.signatories.length === 0">
-        Nenhum signatário definido.
-      </div>
-      <ul *ngIf="document.signatories && document.signatories.length > 0">
-        <li *ngFor="let signatory of document.signatories | orderBy:\'order\':\'asc\'" [ngClass]="{
-            \'pending\': signatory.status === \'PENDING\',
-            \'signed\': signatory.status === \'SIGNED\',
-            \'rejected\': signatory.status === \'REJECTED\'
-          }">
-          <span class="order">{{ signatory.order }}.</span>
-          <span class="name">{{ signatory.name || signatory.email || (\'Usuário ID: \' + signatory.userId) }}</span>
-          <span class="status">({{ signatory.status }})</span>
-          <span *ngIf="signatory.signedAt" class="timestamp"> - {{ signatory.signedAt | date:\'dd/MM/yyyy HH:mm\':\'UTC\' }}</span>
-          <span *ngIf="signatory.status === \'REJECTED\' && signatory.rejectionReason" class="reason"> - Motivo: {{ signatory.rejectionReason }}</span>
-        </li>
-      </ul>
-    </div>
-
-    <!-- Audit Log Section -->
-    <div class="audit-log-section">
-      <h3>Histórico do Documento</h3>
-      <div *ngIf="isLoadingLogs" class="loading-indicator">
-        Carregando histórico...
-        <mat-spinner diameter="30"></mat-spinner>
-      </div>
-      <div *ngIf="logsErrorMessage" class="error-message">
-        {{ logsErrorMessage }}
-      </div>
-      <div *ngIf="!isLoadingLogs && auditLogs.length === 0 && !logsErrorMessage">
-        Nenhum histórico encontrado para este documento.
-      </div>
-      <ul *ngIf="!isLoadingLogs && auditLogs.length > 0" class="audit-log-list">
-        <li *ngFor="let log of auditLogs">
-          <span class="timestamp">{{ log.timestamp | date:
-          \'dd/MM/yyyy HH:mm:ss\':\'UTC\' }}</span> -
-          <span class="user">{{ log.userName || (log.userId ? \'Usuário ID: \' + log.userId : \'Sistema\') }}</span> -
-          <span class="action">{{ log.action }}</span>
-          <!-- Optionally display details -->
-          <!-- <span *ngIf="log.details"> - {{ log.details | json }}</span> -->
-        </li>
-      </ul>
-    </div>
-
   </div>
 </div>
-
