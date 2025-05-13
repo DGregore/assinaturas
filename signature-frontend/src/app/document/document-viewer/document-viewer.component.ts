@@ -1,5 +1,5 @@
 
-import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, AfterViewInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { DocumentService } from '../../services/document.service';
 import { SignatureTemplateService } from '../../services/signature-template.service';
@@ -23,7 +23,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   styleUrls: ['./document-viewer.component.css'],
   imports: [CommonModule, FormsModule]
 })
-export class DocumentViewerComponent implements OnInit, AfterViewInit {
+export class DocumentViewerComponent implements OnInit, AfterViewInit, OnDestroy {
   public canvas!: fabric.Canvas;
   @ViewChild('pdfCanvas') pdfCanvas!: ElementRef;
   @ViewChild('signatureCanvas') signatureCanvas!: ElementRef;
@@ -35,6 +35,7 @@ export class DocumentViewerComponent implements OnInit, AfterViewInit {
   totalPages: number = 0;
   scale: number = 1.5;
   isLoading: boolean = true;
+  currentPdfUrl: string | null = null;
   
   // Assinatura
   signaturePad: any;
@@ -73,16 +74,47 @@ export class DocumentViewerComponent implements OnInit, AfterViewInit {
 
   loadDocument(): void {
     this.isLoading = true;
+    
+    // Revogar URL anterior se existir
+    this.revokeCurrentPdfUrl();
+    
     this.documentService.getDocument(Number(this.documentId)).subscribe(
       (document) => {
         this.document = document;
-        this.loadPdf(document.storagePath);
+        
+        // Usar o endpoint correto para download do documento
+        this.documentService.downloadDocument(Number(this.documentId)).subscribe(
+          (pdfBlob) => {
+            // Converter o Blob para um URL de objeto
+            this.currentPdfUrl = URL.createObjectURL(pdfBlob);
+            this.loadPdf(this.currentPdfUrl);
+          },
+          (error) => {
+            console.error('Erro ao baixar o PDF:', error);
+            this.isLoading = false;
+          }
+        );
       },
       (error) => {
         console.error('Erro ao carregar documento:', error);
         this.isLoading = false;
       }
     );
+  }
+  
+  /**
+   * Revoga o URL de objeto atual para evitar vazamentos de memória
+   */
+  revokeCurrentPdfUrl(): void {
+    if (this.currentPdfUrl) {
+      URL.revokeObjectURL(this.currentPdfUrl);
+      this.currentPdfUrl = null;
+    }
+  }
+  
+  ngOnDestroy(): void {
+    // Limpar recursos quando o componente for destruído
+    this.revokeCurrentPdfUrl();
   }
 
   // loadPdf(url: string): void {
@@ -99,9 +131,10 @@ export class DocumentViewerComponent implements OnInit, AfterViewInit {
   // }
 
   loadPdf(url: string): void {
-    // Verificau00e7u00e3o de segurana para garantir que o URL nu00e3o estu00e1 vazio
+    // Verificação de segurança para garantir que o URL não está vazio
     if (!url) {
-      console.error('URL do PDF número fornecida');
+      console.error('URL do PDF não fornecida');
+      this.isLoading = false;
       return;
     }
   
@@ -120,6 +153,7 @@ export class DocumentViewerComponent implements OnInit, AfterViewInit {
       },
       (error) => {
         console.error('Erro ao carregar PDF:', error);
+        this.isLoading = false;
       }
     );
   }
@@ -178,19 +212,21 @@ export class DocumentViewerComponent implements OnInit, AfterViewInit {
   }
 
   initializeSignaturePad(): void {
-    const canvas = this.signatureCanvas.nativeElement;
-    this.signaturePad = new fabric.Canvas(canvas, {
-      isDrawingMode: true,
-      width: this.signatureSize.width,
-      height: this.signatureSize.height
-    });
-    
-    // Configurar o pincel para desenho
-    this.updateBrushSettings();
-    
-    // Limpar o canvas
-    this.clearSignature();
-  }
+  const canvas = this.signatureCanvas.nativeElement;
+  // Inicializa o canvas sem definir isDrawingMode diretamente nas opções
+  this.signaturePad = new fabric.Canvas(canvas, {
+    width: this.signatureSize.width,
+    height: this.signatureSize.height
+  });
+  // Define isDrawingMode após a criação para inicializar o freeDrawingBrush
+  this.signaturePad.isDrawingMode = true;
+
+  // Configurar o pincel para desenho
+  this.updateBrushSettings();
+  
+  // Limpar o canvas
+  this.clearSignature();
+}
 
   updateBrushSettings(): void {
     if (!this.signaturePad) return;
